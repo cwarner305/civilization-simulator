@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Civilization Modeling Lab</title>
+<style>
+:root{
+  --gold:#C9A23F; --black:#111; --muted:#666; --border:#d7d7d7; --panel:#f7f7f5;
+  --good:#2f6f4e; --warn:#9a6b16; --bad:#8a3434; --blue:#3d648c;
+}
+*{box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;margin:0;background:white;color:var(--black);line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding:22px}
+header{border:3px solid var(--black);padding:18px;margin-bottom:18px}
+header h1{margin:.15rem 0;font-size:1.7rem}
+.eyebrow{font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{border:2px solid var(--border);padding:16px;background:#fff;margin-bottom:16px}
+.goldline{border-top:7px solid var(--gold)}
+.pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:3px 9px;font-size:.78rem;font-weight:700}
+.row{padding:10px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.rowtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.small{font-size:.9rem;color:var(--muted)}
+.choice,.predChoice{display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--border);padding:12px;margin-top:9px;cursor:pointer;font-size:1rem}
+.choice.selected,.predChoice.selected{border-color:var(--gold);background:#fffaf0}
+button{min-height:44px;border:0;padding:10px 16px;font-weight:800;cursor:pointer}
+.primary{background:var(--black);color:#fff}
+.secondary{background:#fff;border:2px solid var(--black)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.callout{background:var(--panel);padding:12px;border-left:5px solid var(--gold);margin-top:12px}
+.columns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.columns,.two{grid-template-columns:1fr}}
+.effect{padding:9px 0;border-bottom:1px solid var(--border)}
+.timeline{display:grid;grid-template-columns:90px 1fr;gap:9px;margin:10px 0}
+.timeline .yr{font-weight:800}
+.good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+.hidden{display:none}
+textarea{width:100%;min-height:90px;padding:10px;border:1px solid var(--border);font:inherit}
+.scoreline{height:10px;background:#eee;margin-top:5px}
+.scoreline span{display:block;height:10px;background:var(--gold)}
+hr{border:0;border-top:1px solid var(--border);margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{border:1px solid var(--border);padding:9px;vertical-align:top;text-align:left}
+th{background:var(--panel)}
+.scroll{overflow-x:auto}
+.summaryBox{border:3px solid var(--black);padding:18px;margin-top:18px}
+.connection{padding:9px 12px;border-left:5px solid var(--gold);background:var(--panel);margin:8px 0}
+@media print{
+  #decisionCard,#nextControls,.noPrint,aside{display:none!important}
+  .grid{display:block}
+  .card,.summaryBox{break-inside:avoid}
+  body{font-size:11pt}
+  .wrap{max-width:none;padding:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+<header>
+  <div class="eyebrow">World Cultures • Cumulative Historical Systems Lab</div>
+  <h1>Civilization Modeling Lab</h1>
+  <p style="margin-bottom:0">A random problem starts the simulation. Your decisions change the civilization, and those changes determine the problems you face in later rounds.</p>
+</header>
+
+<div class="grid">
+  <aside>
+    <section class="card goldline">
+      <div class="rowtop"><h2 style="margin:0;font-size:1.2rem">Your Civilization</h2><span id="year" class="pill">500 BCE</span></div>
+      <div id="profile"></div>
+    </section>
+    <section class="card">
+      <div class="eyebrow">Course Lens</div>
+      <p><strong>What changes a culture?</strong></p>
+      <p class="small">Watch population, density, food, settlement, connection, social class, power, legitimacy, exploitation, environment, and government capacity.</p>
+    </section>
+  </aside>
+
+  <main>
+    <section id="decisionCard" class="card goldline">
+      <div class="rowtop">
+        <div><div class="eyebrow">Round <span id="roundNum">1</span> of 4</div><h2 id="scenarioTitle" style="margin:.2rem 0"></h2></div>
+        <span id="theme" class="pill"></span>
+      </div>
+      <div id="whyThis" class="callout"></div>
+      <p id="story"></p>
+      <hr>
+      <div class="eyebrow">1. Choose a response</div>
+      <p class="small">Most choices are based on strategies real societies tried. Some are intentionally weak or shortsighted.</p>
+      <div id="choices"></div>
+
+      <div id="predictionPanel" class="hidden">
+        <hr>
+        <div class="eyebrow">2. Hypothesize before you run it</div>
+        <p><strong>Choose exactly TWO effects you think are most likely.</strong></p>
+        <div id="predictionChoices"></div>
+        <label><strong>Why?</strong></label>
+        <textarea id="predictionWhy" placeholder="Explain why you expect those effects."></textarea>
+        <p id="warning" class="small"></p>
+        <button id="runBtn" class="primary">Run 100 years</button>
+      </div>
+    </section>
+
+    <section id="results" class="hidden">
+      <section class="card">
+        <div class="eyebrow">Prediction Check</div>
+        <h2 style="font-size:1.15rem">How did your hypothesis compare?</h2>
+        <div id="predictionFeedback"></div>
+      </section>
+
+      <section class="card">
+        <div class="eyebrow">Your Policy</div>
+        <h2 id="policyTitle" style="font-size:1.15rem"></h2>
+        <p id="policyDesc"></p>
+      </section>
+
+      <div class="columns">
+        <section class="card"><div class="eyebrow">First-Order</div><h3>What changes first?</h3><div id="first"></div></section>
+        <section class="card"><div class="eyebrow">Second-Order</div><h3>What does that cause?</h3><div id="second"></div></section>
+        <section class="card"><div class="eyebrow">Third-Order</div><h3>What new pressure appears?</h3><div id="third"></div></section>
+      </div>
+
+      <div class="two">
+        <section class="card"><div class="eyebrow">Who Experiences It Differently?</div><div id="groups"></div></section>
+        <section class="card"><div class="eyebrow">System Changes</div><div id="changes"></div></section>
+      </div>
+
+      <section class="card">
+        <div class="eyebrow">Real Historical Comparison</div>
+        <h2 id="histTitle" style="font-size:1.15rem"></h2>
+        <p id="histBody"></p>
+        <div class="two">
+          <div class="callout"><strong>Similar mechanism</strong><p id="histSame"></p></div>
+          <div class="callout"><strong>Important difference</strong><p id="histDiff"></p></div>
+        </div>
+      </section>
+
+      <section class="card"><div class="eyebrow">100 Years Later</div><div id="timeline"></div></section>
+
+      <section class="card goldline">
+        <div class="eyebrow">Pattern to Notice</div>
+        <h2 id="pattern" style="font-size:1.15rem"></h2>
+        <p id="patternText"></p>
+      </section>
+
+      <section id="nextControls" class="card">
+        <div class="eyebrow">Because of What You Did...</div>
+        <h2 id="nextTitle" style="font-size:1.15rem"></h2>
+        <p id="nextReason"></p>
+        <button id="nextBtn" class="primary">Go to next round</button>
+        <button id="restartBtn" class="secondary">New civilization</button>
+      </section>
+    </section>
+
+    <section id="finalSummary" class="hidden summaryBox">
+      <div class="eyebrow">Final Civilization Report</div>
+      <h2>What did your civilization become?</h2>
+      <p id="summaryIntro"></p>
+
+      <h3>Decision & Hypothesis Summary</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Round</th>
+              <th>Problem</th>
+              <th>What you tried</th>
+              <th>Your hypothesis</th>
+              <th>What you got right</th>
+              <th>What was off</th>
+              <th>What worked</th>
+              <th>What did not / new problem</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTable"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top:20px">How the Civilization Changed</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Measure</th>
+              <th>Start</th>
+              <th>After R1</th>
+              <th>After R2</th>
+              <th>After R3</th>
+              <th>After R4</th>
+              <th>What the change means</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top:20px">Connections Across the Simulation</h3>
+      <div id="connectionSummary"></div>
+
+      <h3 style="margin-top:20px">Comparison Civilizations</h3>
+      <div id="comparisonCivs"></div>
+
+      <div class="callout">
+        <strong>Final historical conclusion</strong>
+        <p id="finalConclusion"></p>
+      </div>
+
+      <div class="noPrint" style="margin-top:16px">
+        <button id="printBtn" class="primary">Print / Save as PDF</button>
+        <button id="exportBtn" class="secondary">Export Summary (.txt)</button>
+      </div>
+    </section>
+  </main>
+</div>
+</div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const clamp = n => Math.max(0, Math.min(100, n));
+const level = v => v >= 72 ? 'HIGH' : v >= 55 ? 'MODERATE' : v >= 38 ? 'LIMITED' : 'LOW';
+const fmtPop = n => (n/1000000).toFixed(2) + ' million';
+const fmtYear = y => y < 0 ? Math.abs(y) + ' BCE' : y + ' CE';
+
+let round = 1, year = -500, currentScenarioId = null, selectedChoice = null, selectedPredictions = [];
+let civ, historyLog=[], snapshots=[];
+
+function freshCiv(){
+  return {
+    population:2400000, density:45, food:66, urban:46, trade:50,
+    admin:56, central:55, regional:48, army:50, elite:58, inequality:55,
+    commoner:57, eliteSupport:62, conquered:52, stability:61,
+    disease:35, water:36, labor:67, extraction:48, property:66
+  };
+}
+
+const effectLabels = {
+  foodUp:'Food supply improves',foodDown:'Food supply worsens',popUp:'Population grows',popDown:'Population falls',
+  densityUp:'Population density rises',densityDown:'Population density falls',tradeUp:'Trade grows',tradeDown:'Trade falls',
+  adminUp:'Government capacity improves',adminDown:'Government capacity weakens',centralUp:'Central control grows',
+  centralDown:'Central control weakens',regionalUp:'Regional leaders gain power',regionalDown:'Regional leaders lose power',
+  eliteDown:'Traditional elite power falls',eliteUp:'Traditional elite power grows',ineqDown:'Inequality falls',ineqUp:'Inequality rises',
+  commonUp:'Commoner support rises',commonDown:'Commoner support falls',eliteResistance:'Elite resistance rises',
+  stabilityUp:'Stability improves',stabilityDown:'Instability rises',diseaseDown:'Disease risk falls',diseaseUp:'Disease risk rises',
+  laborValue:'Workers gain bargaining power',armyUp:'Military becomes more important',exploitationUp:'Exploitation increases',
+  propertyDown:'Property security falls',migrationUp:'Migration increases',taxUp:'Tax collection becomes easier',
+  taxDown:'Tax collection becomes harder',specializationUp:'Specialization increases',localKnowledgeDown:'Local governing knowledge falls',
+  waterDown:'Water stress falls'
+};
+
+const history = {
+  persia:{title:'Achaemenid Persia',body:'Persian rulers used provinces, local elites, tribute, military power, roads, and long-distance communication to govern a huge and diverse empire.',same:'Like your response, this solves distance by creating institutions between the ruler and distant communities.',diff:'Delegation solved distance but also created powerful provincial actors who required monitoring.'},
+  qin:{title:'Qin China',body:'Qin weakened older hereditary aristocratic privilege while expanding official ranks, legal administration, military organization, and bureaucracy.',same:'Like your response, political power is shifted away from an established elite.',diff:'The important pattern is institutional replacement: old power was weakened while other state structures expanded.'},
+  blackdeath:{title:'Europe after the Black Death',body:'Mass mortality reduced available labor. In some regions surviving workers gained bargaining power while elites and governments tried to limit those changes.',same:'Fewer workers make each worker harder to replace.',diff:'Labor outcomes depended on law, land, coercion, migration, and political power.'},
+  urban:{title:'Dense premodern cities',body:'Large premodern cities concentrated markets, specialists, travelers, animals, water sources, and waste.',same:'Density makes exchange easier while increasing sanitation and disease risks.',diff:'Disease outcomes varied with pathogens, infrastructure, nutrition, housing, and government response.'},
+  irrigation:{title:'Irrigation-based agrarian states',body:'Many agrarian civilizations used canals, dams, storage, and organized water systems to increase agricultural reliability.',same:'Your response uses infrastructure to change the relationship between society and environment.',diff:'Water systems require labor, maintenance, administration, and decisions about access.'},
+  song:{title:'Song China',body:'Song China experienced extensive market growth, specialized production, large cities, and long-distance exchange.',same:'Greater connection can increase total wealth and specialization.',diff:'Commercial gains were not distributed evenly among merchants, landowners, workers, and farmers.'},
+  assyria:{title:'Neo-Assyrian Empire',body:'Neo-Assyrian rulers used military force, provincial administration, tribute, deportation, and intimidation to control conquered territories.',same:'Your response uses coercion to create obedience quickly.',diff:'Obedience through force is not the same as legitimacy, and coercive systems require continuing resources.'}
+};
+
+function C(id,label,desc,delta,predictions,first,second,third,hist,pattern,groups){
+  return {id,label,desc,delta,predictions,first,second,third,hist,pattern,groups};
+}
+function P(key,likely,why){ return {key, likely, why}; }
+
+const bank = {
+  distance:{title:'Your Territory Has Outgrown Your Government',theme:'EMPIRE • DISTANCE • POWER',story:'Your civilization controls distant farming regions, towns, and conquered peoples. Orders from the capital arrive slowly. Some local leaders obey only when it benefits them.',choices:[
+    C('prov','Create provinces with powerful governors','Give governors authority to collect taxes, enforce laws, and organize defense.',{admin:14,central:9,regional:15,elite:5},
+      [P('adminUp',true,'Local officials act without waiting for the capital.'),P('regionalUp',true,'Authority and resources collect around governors.'),P('taxUp',true,'Regular administration can improve collection.'),P('densityDown',false,'Provincial government does not directly lower density.'),P('ineqDown',false,'Delegation does not redistribute wealth.'),P('regionalDown',false,'Governors are being given more authority.')],
+      ['Government reaches distant areas more effectively.','Governors solve local problems faster.'],['Tax collection and law enforcement become more regular.','Provincial officials gain experience and networks.'],['Some governors become powerful enough to resist the center.'],history.persia,'Delegation solves distance, but creates powerful middlemen.',[['Central ruler','Gains reach.'],['Governors','Gain regional influence.'],['Local elites','Can attach themselves to provincial government.'],['Ordinary people','Experience more regular taxation.']]),
+    C('roads','Build roads and messenger stations','Spend heavily on roads, bridges, and relay stations.',{trade:12,admin:7,central:8,stability:3},
+      [P('tradeUp',true,'Merchants and goods move more easily.'),P('adminUp',true,'Information and orders travel faster.'),P('centralUp',true,'The ruler responds to distant events sooner.'),P('ineqDown',false,'Roads do not redistribute wealth.'),P('densityDown',false,'Roads may encourage city growth.'),P('regionalDown',false,'Roads do not remove regional leaders.')],
+      ['Messages, officials, soldiers, and goods move faster.'],['Trade and government coordination improve.'],['The state must maintain roads, and enemies can use them too.'],history.persia,'Connection strengthens states, but it also strengthens movement generally.',[['Merchants','Benefit from faster routes.'],['Officials','Gain faster information.'],['Farmers','May owe taxes or labor.'],['Army','Can move faster.']]),
+    C('local','Keep local rulers in place','Let conquered rulers govern locally if they pay taxes and remain loyal.',{admin:7,conquered:10,regional:13,central:-2},
+      [P('adminUp',true,'Existing institutions continue functioning.'),P('regionalUp',true,'Local rulers keep real authority.'),P('commonUp',true,'Less disruption can reduce resentment.'),P('centralUp',false,'The center gives up some direct control.'),P('eliteDown',false,'Local elites are preserved.'),P('tradeDown',false,'This policy does not inherently reduce exchange.')],
+      ['Local government continues with little disruption.'],['The empire benefits from existing knowledge and institutions.'],['The center becomes dependent on local elites whose loyalty may later change.'],history.persia,'Using existing institutions preserves knowledge, but also preserves local power.',[['Local rulers','Keep influence.'],['Conquered peoples','Experience less disruption.'],['Central ruler','Gains cooperation but less direct control.']]),
+    C('army','Station large armies across the empire','Use permanent garrisons to force distant regions to obey.',{army:15,central:10,conquered:-12,commoner:-5,extraction:8,stability:-3},
+      [P('centralUp',true,'Soldiers enforce orders quickly.'),P('armyUp',true,'The military receives more resources and importance.'),P('commonDown',true,'Taxes and coercion can reduce support.'),P('ineqDown',false,'Military occupation does not redistribute wealth.'),P('regionalDown',false,'Commanders can become regional powers.'),P('foodUp',false,'Armies consume food.')],
+      ['Open resistance becomes more dangerous.'],['The ruler gains short-term control where troops are present.'],['Military costs and resentment grow; generals become politically important.'],history.assyria,'Force can produce obedience quickly, but coercion has continuing costs.',[['Army','Gains resources and importance.'],['Conquered peoples','Lose autonomy.'],['Taxpayers','Fund a larger military.']]),
+    C('personal','Make the ruler approve every major decision','Require distant officials to wait for the capital before acting.',{admin:-12,central:-5,regional:4,stability:-5},
+      [P('adminDown',true,'Decision-making becomes too slow.'),P('stabilityDown',true,'Local problems remain unsolved longer.'),P('regionalUp',true,'Officials may act on their own because waiting is impractical.'),P('centralUp',false,'Extreme centralization can reduce effective control.'),P('taxUp',false,'Slow administration makes collection harder.'),P('tradeUp',false,'This choice does not improve commercial movement.')],
+      ['Decisions slow dramatically.'],['Local problems wait for information to travel to the capital and back.'],['Officials ignore procedure or act independently because the system cannot respond fast enough.'],history.persia,'Extreme centralization can reduce effective control when distance overwhelms communication.',[['Ruler','Receives more decisions than one court can handle.'],['Local officials','Become frustrated.'],['Residents','Wait longer for government action.']])
+  ]},
+
+  density:{title:'The Capital Has Become Extremely Crowded',theme:'POPULATION DENSITY • URBANIZATION',story:'The capital now holds about 180,000 people. Houses, markets, workshops, animals, wells, and waste are packed close together. Traders arrive from distant regions every day.',choices:[
+    C('san','Build drains, protected wells, and waste systems','Use taxes and organized labor to improve water and waste removal.',{disease:-18,admin:6,stability:7,commoner:5},
+      [P('diseaseDown',true,'Cleaner water and waste removal reduce exposure.'),P('adminUp',true,'The state must organize shared infrastructure.'),P('stabilityUp',true,'Fewer health shocks make dense life more manageable.'),P('densityDown',false,'Sanitation makes density safer, not smaller.'),P('tradeDown',false,'Infrastructure does not inherently reduce trade.'),P('eliteDown',false,'Sanitation does not directly weaken elites.')],
+      ['Water and waste conditions improve.'],['Dense neighborhoods become safer without requiring the city to shrink.'],['The city becomes dependent on costly infrastructure and maintenance.'],history.urban,'As density rises, infrastructure must become more complex too.',[['Urban poor','Benefit strongly.'],['Government','Takes on new responsibilities.'],['Taxpayers','Pay for upkeep.']]),
+    C('quarantine','Restrict travelers during outbreaks','Temporarily close markets and limit movement into the city.',{disease:-10,trade:-12,stability:2,commoner:-2},
+      [P('diseaseDown',true,'Less movement can slow transmission.'),P('tradeDown',true,'Merchants and goods also move less.'),P('commonDown',true,'Restrictions can reduce work and goods.'),P('tradeUp',false,'Closing routes does the opposite.'),P('densityDown',false,'Short-term restrictions do not automatically depopulate the city.'),P('foodUp',false,'Restricted movement may make supply harder.')],
+      ['Fewer travelers bring disease into the city.'],['Commercial activity and movement decline.'],['Food, employment, tax revenue, and support can suffer.'],history.urban,'Connection spreads wealth and disease at the same time.',[['Merchants','Lose income.'],['Urban residents','Face lower exposure but fewer goods.'],['Government','Must enforce restrictions.']]),
+    C('expand','Encourage even faster city growth','Offer incentives for more workshops and migrants to move into the capital.',{density:15,urban:10,trade:8,disease:15,stability:-5,population:90000},
+      [P('densityUp',true,'More people move into the same urban space.'),P('tradeUp',true,'A larger city supports more markets.'),P('diseaseUp',true,'Crowding raises exposure when sanitation lags.'),P('foodUp',false,'More urban residents increase food demand.'),P('densityDown',false,'The policy explicitly raises density.'),P('ineqDown',false,'Growth can increase inequality.')],
+      ['Markets and specialized work expand.'],['The city attracts more people and commercial activity.'],['Housing, water, waste, food distribution, and disease problems outgrow infrastructure.'],history.song,'Urban growth creates opportunity only when support systems grow with it.',[['Merchants','Gain customers and workers.'],['Workers','Gain jobs but face crowding.'],['Government','Faces larger infrastructure demands.']]),
+    C('ignore','Do nothing because disease is unavoidable','Leave sanitation and water completely to households.',{disease:18,population:-150000,labor:-8,admin:-2,stability:-8},
+      [P('diseaseUp',true,'Crowding and unsafe water continue.'),P('popDown',true,'Repeated outbreaks increase mortality.'),P('stabilityDown',true,'Labor loss and fear disrupt society.'),P('tradeUp',false,'Severe disease can disrupt markets.'),P('foodUp',false,'Disease does not increase harvests.'),P('adminUp',false,'The state is avoiding capacity-building.')],
+      ['Disease spreads repeatedly through crowded neighborhoods.'],['Deaths and illness reduce workers and taxpayers.'],['Labor shortages affect farms, workshops, armies, and government.'],history.urban,'A private problem becomes political when households cannot solve the shared system alone.',[['Poor households','Carry the greatest burden.'],['Employers','Lose workers.'],['Government','Loses revenue.']])
+  ]},
+
+  elites:{title:'A Small Elite Owns Much of the Land',theme:'SOCIAL CLASS • POWER • LEGITIMACY',story:'Elite families own large estates and dominate government offices. Many farmers are indebted. Those same networks include experienced judges, officers, scribes, and tax collectors.',choices:[
+    C('taxelite','Tax large landowners more heavily','Shift more of the tax burden toward major estates.',{inequality:-6,commoner:7,eliteSupport:-8,admin:2,stability:2},
+      [P('ineqDown',true,'The tax burden becomes somewhat less unequal.'),P('commonUp',true,'Ordinary households may feel relief.'),P('eliteResistance',true,'Wealthy families have reasons to oppose the policy.'),P('adminDown',false,'Elite officials remain available.'),P('eliteDown',false,'Taxation does not erase elite networks.'),P('tradeDown',false,'This does not shut down exchange.')],
+      ['Large estates surrender more revenue.'],['Ordinary producers gain some relief while government retains elite expertise.'],['Elites seek exemptions, hide wealth, or use political influence.'],history.qin,'Reform changes alliances even when it does not remove the elite.',[['Farmers','Benefit if their burden falls.'],['Elites','Lose wealth and resist.'],['Government','Keeps experienced personnel.']]),
+    C('land','Break up some large estates and redistribute land','Transfer part of elite land to indebted or land-poor farmers.',{inequality:-15,commoner:14,elite:-12,eliteSupport:-17,property:-8,stability:2},
+      [P('ineqDown',true,'Land ownership becomes less concentrated.'),P('commonUp',true,'Beneficiaries gain resources.'),P('eliteResistance',true,'Dispossessed landowners fight reform.'),P('adminDown',false,'Redistribution does not remove all officials.'),P('tradeUp',false,'The direct effect is land ownership.'),P('armyUp',false,'Military power need not rise.')],
+      ['More households gain productive land.'],['Support rises among beneficiaries while elite wealth falls.'],['Dispossessed elites organize resistance and property holders become less certain.'],history.qin,'Redistribution changes economics and political alliances at the same time.',[['Small farmers','Gain land.'],['Large landowners','Lose wealth and power.'],['Government','Must enforce new ownership.']]),
+    C('replace','Remove hereditary elites from office and build a trained bureaucracy','Keep government functions but shift offices toward trained state officials.',{elite:-20,eliteSupport:-20,admin:13,central:12,regional:-5,commoner:6},
+      [P('eliteDown',true,'Hereditary political access is reduced.'),P('adminUp',true,'New officials perform governing work.'),P('centralUp',true,'Officials depend more on the central state.'),P('adminDown',false,'The policy includes institutional replacement.'),P('regionalUp',false,'The design reduces inherited regional power.'),P('foodUp',false,'Political reform does not create food.')],
+      ['Traditional elite control of office falls.'],['New officials make the ruler less dependent on hereditary families.'],['The bureaucracy develops privileges and interests of its own; a new elite may emerge.'],history.qin,'Weakening an elite works differently when another institution is ready to replace it.',[['Traditional elites','Lose political access.'],['New officials','Gain influence.'],['Ruler','Gains administrative control.']]),
+    C('execute','Execute leading elites and seize their property','Destroy the old elite class quickly and redistribute some wealth.',{elite:-32,eliteSupport:-40,inequality:-18,commoner:12,admin:-20,property:-22,army:9,stability:-10},
+      [P('eliteDown',true,'The old elite is removed.'),P('ineqDown',true,'Seized land and wealth reduce concentration short-term.'),P('adminDown',true,'Judges, scribes, officers, and tax experts are lost.'),P('commonDown',false,'Some ordinary people may initially support the attack.'),P('propertyDown',true,'Other owners become less certain their property is safe.'),P('regionalDown',false,'Power vacuums can create strongmen.')],
+      ['Traditional elite power collapses quickly.'],['Some commoners benefit, but administrative experience and local networks disappear too.'],['The ruler relies more on soldiers or inexperienced replacements, who can become the next elite.'],history.qin,'Destroying a ruling class does not destroy the need for administration.',[['Poor farmers','May gain wealth or land.'],['Old elites','Are destroyed or driven into opposition.'],['Officials','Lose institutional knowledge.'],['Army','May gain power.']]),
+    C('nothing','Protect existing property and make no reforms','Keep the elite structure because experienced families already know how to govern.',{elite:8,inequality:10,eliteSupport:8,commoner:-10,admin:3,stability:-4},
+      [P('eliteUp',true,'Existing elites keep accumulating influence.'),P('ineqUp',true,'No reform interrupts concentration.'),P('adminUp',true,'Experienced networks remain intact.'),P('commonUp',false,'Indebted farmers receive no relief.'),P('eliteResistance',false,'Elites have little reason to resist.'),P('propertyDown',false,'Existing property rights are protected.')],
+      ['Administration remains experienced and predictable.'],['Elite families cooperate closely with government.'],['Debt and land concentration continue growing, weakening ordinary support.'],history.qin,'Stability for one group can create long-term instability for another.',[['Elites','Benefit strongly.'],['Officials','Keep continuity.'],['Indebted farmers','Lose influence.']])
+  ]},
+
+  drought:{title:'Years of Weak Rainfall Are Damaging Farms',theme:'ENVIRONMENT • FOOD • MIGRATION',story:'Several farming regions have had weak rainfall for years. Harvests are smaller, wells are lower, and families are leaving the driest areas.',choices:[
+    C('irrig','Build canals and water-storage systems','Organize labor and taxes to move and store water.',{food:13,water:-10,admin:6,population:80000,stability:4},
+      [P('foodUp',true,'More farms receive dependable water.'),P('adminUp',true,'Large water systems require coordination.'),P('popUp',true,'More reliable food supports more people.'),P('tradeDown',false,'Irrigation does not inherently reduce trade.'),P('eliteDown',false,'Water management may create new powerful administrators.'),P('stabilityDown',false,'Successful irrigation usually eases immediate pressure.')],
+      ['More farms receive reliable water.'],['Harvests recover and population can continue growing.'],['Canals require maintenance, labor, and political control of water.'],history.irrigation,'Environmental solutions often create new administrative systems.',[['Farmers near canals','Benefit strongly.'],['Government','Gains responsibility.'],['Farmers outside the system','May feel disadvantaged.']]),
+    C('tradefood','Import grain from wetter regions','Use trade and state purchasing to replace lost harvests.',{food:9,trade:10,stability:5,extraction:3},
+      [P('foodUp',true,'Imported food replaces some lost harvest.'),P('tradeUp',true,'The civilization relies more on exchange.'),P('stabilityUp',true,'Shortages are reduced.'),P('tradeDown',false,'The plan expands trade.'),P('densityDown',false,'Imports can keep dense cities large.'),P('adminDown',false,'State purchasing may require more administration.')],
+      ['Food enters shortage regions from elsewhere.'],['Cities avoid the worst immediate shortages.'],['The civilization becomes more dependent on safe routes and outside producers.'],history.song,'Trade can turn a local environmental problem into a network dependency.',[['Urban residents','Benefit from imported food.'],['Merchants','Gain importance.'],['Government','Must protect supply routes.']]),
+    C('migrate','Move farming families to wetter regions','Organize migration instead of preserving every settlement.',{population:30000,density:7,stability:1,regional:4,water:-4},
+      [P('migrationUp',true,'Families are deliberately relocated.'),P('densityUp',true,'Receiving regions become more crowded.'),P('stabilityUp',true,'Pressure in the driest areas can fall.'),P('foodUp',false,'Migration does not itself increase harvests.'),P('regionalDown',false,'Receiving regions may become more important.'),P('tradeDown',false,'Migration need not reduce exchange.')],
+      ['Pressure falls in the driest settlements.'],['Receiving regions gain workers and population.'],['Competition over land, water, language, or status grows in receiving regions.'],history.irrigation,'Migration solves pressure in one place by moving it somewhere else.',[['Migrants','Gain a chance to rebuild.'],['Receiving farmers','Face competition.'],['Government','Must manage settlement.']]),
+    C('conquer','Invade a wetter neighboring region','Use the army to seize productive farmland and water.',{food:8,army:10,conquered:-15,extraction:12,stability:-7,regional:5},
+      [P('foodUp',true,'Successful conquest gains productive land.'),P('armyUp',true,'Military importance rises.'),P('stabilityDown',true,'War and conquered populations create tensions.'),P('commonUp',false,'War taxes and casualties may reduce support.'),P('ineqDown',false,'Conquest often concentrates resources.'),P('adminUp',false,'A larger empire can actually create more administrative strain.')],
+      ['The state gains productive territory if conquest succeeds.'],['Military power and imperial territory grow.'],['The civilization must govern a conquered population and defend even more land.'],history.assyria,'Solving a resource problem through conquest creates an empire problem.',[['Army','Gains importance.'],['Conquered farmers','Lose autonomy.'],['Ruler','Gains land but new burdens.']])
+  ]},
+
+  epidemic:{title:'A Major Epidemic Has Reduced the Population',theme:'POPULATION • LABOR • SOCIAL CLASS',story:'Disease has killed many people in cities and farming regions. Farms, workshops, armies, and tax offices all report shortages of workers.',choices:[
+    C('wages','Allow wages and worker bargaining to rise','Let employers compete for scarce workers.',{commoner:12,inequality:-8,eliteSupport:-8,stability:4,labor:4},
+      [P('laborValue',true,'Scarce workers are harder to replace.'),P('ineqDown',true,'Workers capture a larger share of resources.'),P('eliteResistance',true,'Employers lose bargaining power.'),P('commonDown',false,'Workers likely welcome better terms.'),P('popUp',false,'Wages do not immediately replace deaths.'),P('armyUp',false,'The military does not automatically grow.')],
+      ['Workers can demand better pay and conditions.'],['Some ordinary households gain bargaining power relative to landowners.'],['Elites pressure government to restrict wages or labor mobility.'],history.blackdeath,'Population decline can shift bargaining power toward scarce labor.',[['Workers','Gain leverage.'],['Landowners','Pay more or offer better terms.'],['Government','Faces pressure from both groups.']]),
+    C('forcework','Legally force workers to remain on estates','Prevent workers from leaving and require labor at older rates.',{extraction:18,commoner:-16,eliteSupport:10,stability:-8,labor:6},
+      [P('exploitationUp',true,'Workers lose freedom to bargain.'),P('commonDown',true,'People carry heavier coercive demands.'),P('stabilityDown',true,'Flight and resistance become more likely.'),P('ineqDown',false,'The policy protects elite advantages.'),P('laborValue',false,'The policy suppresses bargaining power.'),P('eliteResistance',false,'Elites generally benefit.')],
+      ['Landowners keep access to labor.'],['Production recovers somewhat without large wage increases.'],['Workers flee, resist, or evade rules; enforcement becomes expensive.'],history.blackdeath,'Political power can resist economic changes created by demography.',[['Landowners','Benefit short-term.'],['Workers','Lose mobility.'],['Government','Must enforce restrictions.']]),
+    C('migrants','Recruit migrants from other regions','Offer land or opportunity to bring workers into depopulated areas.',{population:130000,labor:11,density:3,stability:2,conquered:2},
+      [P('migrationUp',true,'The policy attracts newcomers.'),P('popUp',true,'Population recovers faster.'),P('stabilityUp',true,'Production recovers when shortages ease.'),P('densityDown',false,'More people may raise density.'),P('tradeDown',false,'Migration can strengthen connections.'),P('eliteDown',false,'Migration does not automatically weaken elites.')],
+      ['New workers enter depopulated regions.'],['Farms and workshops recover more quickly.'],['Migration changes local culture and creates competition over land, work, or status.'],history.blackdeath,'Migration can replace people, but it also changes societies.',[['Employers','Gain workers.'],['Migrants','Gain opportunities.'],['Local workers','May face competition.']]),
+    C('ignorelabor','Demand the same taxes and production as before','Pretend population loss has not changed available labor.',{commoner:-12,extraction:14,stability:-10,food:-6},
+      [P('commonDown',true,'Survivors carry heavier burdens.'),P('stabilityDown',true,'Unrealistic demands encourage flight.'),P('foodDown',true,'Overburdened farms struggle.'),P('adminUp',false,'Ignoring reality does not build capacity.'),P('ineqDown',false,'The burden remains unequal.'),P('popUp',false,'Heavy pressure can slow recovery.')],
+      ['Surviving households face heavier obligations.'],['Communities struggle to meet old demands with fewer people.'],['Flight, resistance, and lower production make the shortage worse.'],history.blackdeath,'Demographic change forces institutions to adapt whether rulers want them to or not.',[['Survivors','Carry heavier burdens.'],['Government','Attempts to preserve revenue.'],['Production','Falls under unrealistic demands.']])
+  ]},
+
+  governors:{title:'Provincial Governors Are Becoming Rivals',theme:'REGIONAL POWER • CENTRALIZATION',story:'Earlier governors helped manage distant territory. Now some control local taxes, soldiers, elite families, and trade routes. Their regions increasingly depend on them instead of the capital.',choices:[
+    C('inspect','Create inspectors and rotate governors','Send independent inspectors and prevent governors from remaining too long.',{central:9,regional:-9,admin:4,stability:4},
+      [P('centralUp',true,'The ruler gains better oversight.'),P('regionalDown',true,'Governors have less time to build networks.'),P('adminUp',true,'Independent reporting improves information.'),P('regionalUp',false,'The policy weakens regional independence.'),P('eliteDown',false,'Local elites may remain powerful.'),P('foodUp',false,'Inspection does not increase food production.')],
+      ['Governors become easier to monitor.'],['Independent information reaches the ruler more reliably.'],['Frequent rotation can reduce local experience and continuity.'],history.persia,'Delegation often requires a second system devoted to monitoring delegates.',[['Ruler','Gains information.'],['Governors','Lose independence.'],['Local residents','May see less continuity.']]),
+    C('split','Divide large provinces into smaller ones','Reduce the land, revenue, and manpower any single governor controls.',{regional:-10,central:7,admin:-2,stability:3},
+      [P('regionalDown',true,'Each governor controls fewer resources.'),P('centralUp',true,'No single official challenges the center as easily.'),P('adminDown',true,'More provinces mean more paperwork.'),P('regionalUp',false,'The point is to fragment regional power.'),P('tradeUp',false,'Political boundaries do not automatically expand trade.'),P('ineqDown',false,'Division does not redistribute wealth.')],
+      ['No governor controls as many resources.'],['Regional rebellion becomes harder to organize.'],['More provinces create more administrative cost and coordination.'],history.persia,'Dividing authority can reduce threats while increasing complexity.',[['Ruler','Faces weaker rivals.'],['Officials','More positions are created.'],['Taxpayers','Support larger administration.']]),
+    C('armycheck','Use central armies to watch governors','Keep military forces loyal to the ruler near important provinces.',{army:12,regional:-5,central:6,stability:-2},
+      [P('armyUp',true,'The army gains resources and importance.'),P('centralUp',true,'Governors face a stronger central check.'),P('regionalDown',true,'Open rebellion becomes harder.'),P('stabilityUp',false,'Military pressure can raise tension.'),P('ineqDown',false,'Military oversight does not redistribute wealth.'),P('foodUp',false,'More soldiers consume resources.')],
+      ['Governors are less able to rebel openly.'],['The ruler gains a coercive check on provincial power.'],['Generals become another powerful group the ruler must control.'],history.persia,'One powerful group can check another, but that strengthens the checking group.',[['Governors','Lose freedom.'],['Generals','Gain importance.'],['Ruler','Trades one dependency for another.']]),
+    C('independent','Give governors almost complete independence','Let provinces govern themselves as long as they send some taxes.',{regional:18,central:-15,admin:4,stability:1},
+      [P('regionalUp',true,'Governors receive broad authority.'),P('centralDown',true,'The capital gives up direct control.'),P('adminUp',true,'Local decisions can be made quickly.'),P('centralUp',false,'The policy decentralizes.'),P('regionalDown',false,'Governors gain power.'),P('ineqDown',false,'Autonomy does not redistribute wealth.')],
+      ['Regional governments respond quickly to local needs.'],['The capital has fewer daily responsibilities.'],['Provinces become increasingly self-sufficient and may stop obeying the center.'],history.persia,'Autonomy can preserve an empire loosely—or accelerate fragmentation.',[['Governors','Gain enormous power.'],['Local elites','Gain regional influence.'],['Central ruler','Loses authority.']])
+  ]},
+
+  trade:{title:'Trade Has Made Some Cities Extremely Wealthy',theme:'CONNECTION • WEALTH • CLASS',story:'Long-distance trade is booming. Merchant families, port cities, and major landowners are becoming very wealthy. Farmers and laborers are not gaining wealth at the same pace.',choices:[
+    C('protecttrade','Protect trade and keep merchant taxes low','Encourage continued commercial growth.',{trade:14,urban:8,elite:8,inequality:10,admin:2},
+      [P('tradeUp',true,'Lower barriers encourage exchange.'),P('ineqUp',true,'Groups already positioned to profit pull ahead.'),P('eliteUp',true,'Commercial wealth can become political influence.'),P('ineqDown',false,'No redistribution occurs.'),P('tradeDown',false,'The policy expands exchange.'),P('commonUp',false,'More jobs may help some workers, but broad support is not guaranteed.')],
+      ['Trade and commercial cities expand.'],['Merchant and landowning wealth grows quickly.'],['Economic power increasingly becomes political influence.'],history.song,'Growth can make a civilization richer and more unequal at the same time.',[['Merchants','Gain strongly.'],['Urban workers','Gain jobs but not equal wealth.'],['Government','Gains a larger economy to tax.']]),
+    C('merchanttax','Tax commercial wealth and fund public works','Collect more from wealthy merchants and spend it on roads, water, storage, and cities.',{trade:4,inequality:-5,commoner:7,admin:5,eliteSupport:-6,stability:5},
+      [P('ineqDown',true,'Some commercial wealth is redirected.'),P('adminUp',true,'Public projects expand state capacity.'),P('commonUp',true,'Ordinary residents receive benefits.'),P('tradeDown',false,'Moderate taxation does not necessarily destroy trade.'),P('eliteResistance',true,'Wealthy merchants seek exemptions.'),P('regionalUp',false,'This is mainly fiscal policy.')],
+      ['The government captures part of commercial wealth.'],['Public infrastructure expands and benefits become visible.'],['Merchants may evade taxes, move assets, or pressure officials.'],history.song,'Commercial wealth can strengthen the state if the state can tax it.',[['Merchants','Remain wealthy but pay more.'],['Urban residents','Gain infrastructure.'],['Government','Gains capacity.']]),
+    C('bantrade','Ban most long-distance trade to reduce inequality','Close markets and sharply restrict foreign merchants.',{trade:-25,urban:-8,elite:-5,inequality:-4,admin:-4,stability:-5},
+      [P('tradeDown',true,'The state directly restricts exchange.'),P('ineqDown',true,'Some merchant fortunes shrink.'),P('adminDown',true,'The state loses commercial revenue.'),P('commonUp',false,'Workers can lose jobs too.'),P('foodUp',false,'Less trade can reduce flexible food access.'),P('stabilityUp',false,'Economic contraction can create instability.')],
+      ['Some merchant fortunes shrink.'],['Imported goods and commercial tax revenue fall.'],['Workers lose jobs, cities contract, and government loses revenue along with merchant wealth.'],history.song,'Reducing inequality by destroying exchange can also destroy the wealth being distributed.',[['Merchants','Lose heavily.'],['Workers','Lose employment.'],['Government','Loses taxable activity.']])
+  ]}
+};
+
+function randomOpening(){
+  const ids=['distance','density','drought','elites','trade'];
+  return ids[Math.floor(Math.random()*ids.length)];
+}
+
+function renderProfile(){
+  const rows=[
+    ['Population',fmtPop(civ.population),'More people mean more labor and soldiers, but more demand for food and land.'],
+    ['Population Density',level(civ.density),'How closely people live together.'],
+    ['Food Security',level(civ.food),'How reliably people can be fed.'],
+    ['Trade / Connection',level(civ.trade),'How strongly regions are linked.'],
+    ['Government Capacity',level(civ.admin),'Ability to collect taxes, keep records, enforce laws, and organize projects.'],
+    ['Regional Power',level(civ.regional),'Independent power held by governors and local elites.'],
+    ['Inequality',level(civ.inequality),'How concentrated land, wealth, and privilege are.'],
+    ['Stability',level(civ.stability),'How well the system absorbs shocks.']
+  ];
+  $('profile').innerHTML=rows.map(r=>`<div class="row"><div class="rowtop"><strong>${r[0]}</strong><span class="pill">${r[1]}</span></div><div class="small">${r[2]}</div></div>`).join('');
+  $('year').textContent=fmtYear(year);
+}
+
+function adaptiveNext(){
+  const scores=[
+    ['governors',Math.max(0,civ.regional-60)+Math.max(0,50-civ.central)],
+    ['epidemic',Math.max(0,civ.density-58)+Math.max(0,civ.trade-65)*.5+Math.max(0,civ.disease-48)],
+    ['elites',Math.max(0,civ.inequality-60)+Math.max(0,civ.elite-64)+Math.max(0,50-civ.commoner)*.5],
+    ['drought',Math.max(0,civ.water-55)+Math.max(0,55-civ.food)],
+    ['distance',Math.max(0,55-civ.central)+Math.max(0,civ.regional-58)],
+    ['trade',Math.max(0,civ.trade-65)+Math.max(0,civ.inequality-58)*.6]
+  ].filter(x=>x[0]!==currentScenarioId && bank[x[0]]);
+  scores.sort((a,b)=>b[1]-a[1]);
+  if(scores[0]&&scores[0][1]>5)return scores[0][0];
+  const fallback=Object.keys(bank).filter(x=>x!==currentScenarioId);
+  return fallback[Math.floor(Math.random()*fallback.length)];
+}
+
+function whyFor(id,isCurrent=true){
+  if(round===1 && isCurrent)return '<strong>Why this problem?</strong> The first challenge is random. Historical societies could not choose which pressure appeared first.';
+  const m={
+    governors:`Regional power is now <strong>${level(civ.regional).toLowerCase()}</strong>. Earlier solutions strengthened people between the ruler and local communities.`,
+    epidemic:`Your civilization combines <strong>${level(civ.density).toLowerCase()}</strong> density with <strong>${level(civ.trade).toLowerCase()}</strong> connection. Crowding and movement make disease more dangerous.`,
+    elites:`Inequality is <strong>${level(civ.inequality).toLowerCase()}</strong> and elite power is <strong>${level(civ.elite).toLowerCase()}</strong>. Wealth distribution is now shaping politics.`,
+    drought:`Food security is <strong>${level(civ.food).toLowerCase()}</strong>. Environmental pressure is exposing weakness in the food system.`,
+    distance:`Central control is <strong>${level(civ.central).toLowerCase()}</strong> while regional power is <strong>${level(civ.regional).toLowerCase()}</strong>.`,
+    trade:`Trade is <strong>${level(civ.trade).toLowerCase()}</strong>. Commercial growth is changing cities, wealth, and social class.`
+  };
+  return '<strong>Why this problem?</strong> '+(m[id]||'It grew out of conditions created in earlier rounds.');
+}
+
+function renderScenario(){
+  selectedChoice=null;selectedPredictions=[];
+  const s=bank[currentScenarioId];
+  $('roundNum').textContent=round;$('scenarioTitle').textContent=s.title;$('theme').textContent=s.theme;$('whyThis').innerHTML=whyFor(currentScenarioId,true);$('story').textContent=s.story;
+  $('choices').innerHTML='';$('predictionPanel').classList.add('hidden');$('results').classList.add('hidden');
+  s.choices.forEach(c=>{
+    const b=document.createElement('button');b.type='button';b.className='choice';
+    b.innerHTML=`<strong>${c.label}</strong><div class="small">${c.desc}</div>`;
+    b.addEventListener('click',()=>selectChoice(c,b));$('choices').appendChild(b);
+  });
+  renderProfile();
+}
+
+function selectChoice(c,b){
+  selectedChoice=c;selectedPredictions=[];
+  document.querySelectorAll('#choices .choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');
+  $('predictionChoices').innerHTML='';
+  c.predictions.forEach(p=>{
+    if(!effectLabels[p.key])return;
+    const btn=document.createElement('button');btn.type='button';btn.className='predChoice';btn.dataset.key=p.key;
+    btn.innerHTML=`<strong>${effectLabels[p.key]}</strong>`;
+    btn.addEventListener('click',()=>{
+      const idx=selectedPredictions.indexOf(p.key);
+      if(idx>=0){selectedPredictions.splice(idx,1);btn.classList.remove('selected');}
+      else if(selectedPredictions.length<2){selectedPredictions.push(p.key);btn.classList.add('selected');}
+      else {$('warning').textContent='Choose only two predictions.';return;}
+      $('warning').textContent=selectedPredictions.length===2?'Two predictions selected.':'';
+    });
+    $('predictionChoices').appendChild(btn);
+  });
+  $('predictionWhy').value='';$('predictionPanel').classList.remove('hidden');$('predictionPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function applyDelta(delta){
+  for(const [k,v] of Object.entries(delta)){
+    if(k==='population')civ[k]+=v;
+    else civ[k]=clamp((civ[k]??50)+v);
+  }
+}
+
+function demographicModel(){
+  let pct=0;
+  // food drives long-run demographic capacity
+  if(civ.food>=75)pct+=0.045;
+  else if(civ.food>=62)pct+=0.018;
+  else if(civ.food>=50)pct-=0.012;
+  else if(civ.food>=38)pct-=0.05;
+  else pct-=0.11;
+
+  // disease burden
+  if(civ.disease>=75)pct-=0.12;
+  else if(civ.disease>=60)pct-=0.065;
+  else if(civ.disease>=48)pct-=0.025;
+  else if(civ.disease<=25)pct+=0.012;
+
+  // instability and extraction
+  if(civ.stability<38)pct-=0.045;
+  else if(civ.stability<50)pct-=0.018;
+  if(civ.extraction>75)pct-=0.025;
+
+  // labor scarcity can slow recovery
+  if(civ.labor<42)pct-=0.018;
+  else if(civ.labor>75 && civ.food>60)pct+=0.012;
+
+  pct=Math.max(-0.22,Math.min(0.10,pct));
+  const delta=Math.round(civ.population*pct);
+  civ.population=Math.max(250000,civ.population+delta);
+
+  // density follows population and urbanization roughly
+  civ.density=clamp(civ.density + pct*35 + (civ.urban-50)*0.025);
+  return {pct,delta};
+}
+
+function systemicFeedback(){
+  if(civ.food>72){civ.urban=clamp(civ.urban+3);civ.density=clamp(civ.density+2);}
+  if(civ.trade>70){civ.inequality=clamp(civ.inequality+3);civ.disease=clamp(civ.disease+3);civ.urban=clamp(civ.urban+3);}
+  if(civ.army>70){civ.central=clamp(civ.central+3);civ.extraction=clamp(civ.extraction+3);}
+  if(civ.admin<40)civ.stability=clamp(civ.stability-7);
+  if(civ.commoner<40)civ.stability=clamp(civ.stability-6);
+  if(civ.regional>72)civ.central=clamp(civ.central-5);
+  if(civ.food<45)civ.commoner=clamp(civ.commoner-5);
+  if(civ.disease>65)civ.labor=clamp(civ.labor-8);
+}
+
+function run(){
+  if(!selectedChoice){$('warning').textContent='Choose a response first.';return;}
+  if(selectedPredictions.length!==2){$('warning').textContent='Choose exactly two predictions.';return;}
+  const before={...civ};
+  applyDelta(selectedChoice.delta);
+  systemicFeedback();
+  const demo=demographicModel();
+  year+=100;
+  const after={...civ};
+  logRound(before,after,demo);
+  snapshots.push({round,year,state:{...civ}});
+  showResults(before,demo);
+}
+
+function logRound(before,after,demo){
+  const pmap=new Map(selectedChoice.predictions.map(p=>[p.key,p]));
+  const picked=selectedPredictions.map(k=>pmap.get(k)).filter(Boolean);
+  const correct=picked.filter(p=>p.likely);
+  const incorrect=picked.filter(p=>!p.likely);
+  historyLog.push({
+    round,
+    scenarioId:currentScenarioId,
+    problem:bank[currentScenarioId].title,
+    theme:bank[currentScenarioId].theme,
+    choice:selectedChoice.label,
+    choiceDesc:selectedChoice.desc,
+    hypothesis:selectedPredictions.map(k=>effectLabels[k]),
+    hypothesisText:$('predictionWhy').value.trim(),
+    correct:correct.map(p=>effectLabels[p.key]),
+    incorrect:incorrect.map(p=>effectLabels[p.key]),
+    worked:selectedChoice.first.concat(selectedChoice.second),
+    didnt:selectedChoice.third,
+    pattern:selectedChoice.pattern,
+    history:selectedChoice.hist,
+    before:{...before},
+    after:{...after},
+    demographic:demo
+  });
+}
+
+function predictionFeedback(){
+  const pmap=new Map(selectedChoice.predictions.map(p=>[p.key,p]));
+  const picked=selectedPredictions.map(k=>pmap.get(k)).filter(Boolean);
+  const correct=picked.filter(p=>p.likely);
+  const items=picked.map(p=>`<div class="row"><strong class="${p.likely?'good':'warn'}">${effectLabels[p.key]}</strong><div class="small">${p.likely?'Strong prediction in this model. ':'Not one of the strongest expected effects. '}${p.why}</div></div>`).join('');
+  const why=$('predictionWhy').value.trim();
+  $('predictionFeedback').innerHTML=`<p><strong>${correct.length}/2</strong> of your predictions matched the strongest expected effects.</p>${items}${why?`<div class="callout"><strong>Your reasoning:</strong><br>${escapeHtml(why)}</div>`:''}`;
+}
+
+function showResults(before,demo){
+  const c=selectedChoice;
+  predictionFeedback();
+  $('policyTitle').textContent=c.label;$('policyDesc').textContent=c.desc;
+  $('first').innerHTML=c.first.map(x=>`<div class="effect">${x}</div>`).join('');
+  $('second').innerHTML=c.second.map(x=>`<div class="effect">${x}</div>`).join('');
+  $('third').innerHTML=c.third.map(x=>`<div class="effect">${x}</div>`).join('');
+  $('groups').innerHTML=c.groups.map(g=>`<div class="row"><strong>${g[0]}</strong><div class="small">${g[1]}</div></div>`).join('');
+  renderChanges(before,demo);
+  $('histTitle').textContent=c.hist.title;$('histBody').textContent=c.hist.body;$('histSame').textContent=c.hist.same;$('histDiff').textContent=c.hist.diff;
+  $('pattern').textContent=c.pattern;
+  $('patternText').textContent='Ask four questions: What problem did the policy solve? Who benefited? What institution became stronger or weaker? What new problem became more likely?';
+  renderTimeline(c,before,demo);
+
+  if(round<4){
+    const next=adaptiveNext();
+    $('nextBtn').disabled=false;$('nextBtn').textContent='Go to round '+(round+1);$('nextBtn').dataset.next=next;
+    $('nextTitle').textContent=bank[next].title;$('nextReason').innerHTML=whyFor(next,false);
+  }else{
+    $('nextBtn').disabled=true;$('nextBtn').textContent='Simulation complete';
+    $('nextTitle').textContent='Your four-round civilization is complete.';
+    $('nextReason').innerHTML='<strong>Now use the final report below.</strong> It summarizes your choices, predictions, successes, mistakes, data changes, and historical comparisons.';
+    buildFinalSummary();
+  }
+  $('results').classList.remove('hidden');renderProfile();$('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderChanges(before,demo){
+  const rows=[
+    ['Population',before.population,civ.population,true],['Food security',before.food,civ.food],['Trade / connection',before.trade,civ.trade],
+    ['Government capacity',before.admin,civ.admin],['Central control',before.central,civ.central],['Regional power',before.regional,civ.regional],
+    ['Elite power',before.elite,civ.elite],['Inequality',before.inequality,civ.inequality],['Commoner support',before.commoner,civ.commoner],
+    ['Stability',before.stability,civ.stability],['Disease risk',before.disease,civ.disease]
+  ];
+  $('changes').innerHTML=rows.filter(r=>r[3]||Math.abs(r[2]-r[1])>=4).map(r=>{
+    if(r[3]){
+      const diff=r[2]-r[1],arrow=diff>0?'↑':diff<0?'↓':'→';
+      return `<div class="row"><div class="rowtop"><span>${r[0]}</span><strong>${fmtPop(r[1])} → ${fmtPop(r[2])} ${arrow}</strong></div><div class="small">Food, disease, stability, labor, and extraction all influence long-run population.</div></div>`;
+    }
+    const diff=r[2]-r[1],arrow=diff>0?'↑':diff<0?'↓':'→';
+    return `<div class="row"><div class="rowtop"><span>${r[0]}</span><strong>${level(r[1])} → ${level(r[2])} ${arrow}</strong></div><div class="scoreline"><span style="width:${r[2]}%"></span></div></div>`;
+  }).join('');
+}
+
+function renderTimeline(c,before,demo){
+  const popDirection=demo.delta>0?'grows':demo.delta<0?'falls':'stays about the same';
+  const lines=[
+    `<strong>25 years:</strong> ${c.first[0]}`,
+    `<strong>50 years:</strong> ${c.second[0]}`,
+    `<strong>75 years:</strong> ${c.third[0]}`,
+    `<strong>100 years:</strong> Population ${popDirection} from <strong>${fmtPop(before.population)}</strong> to <strong>${fmtPop(civ.population)}</strong>. Food security is <strong>${level(civ.food).toLowerCase()}</strong>, disease risk is <strong>${level(civ.disease).toLowerCase()}</strong>, government capacity is <strong>${level(civ.admin).toLowerCase()}</strong>, and stability is <strong>${level(civ.stability).toLowerCase()}</strong>.`
+  ];
+  $('timeline').innerHTML=lines.map((x,i)=>`<div class="timeline"><div class="yr">${[25,50,75,100][i]} YEARS</div><div>${x}</div></div>`).join('');
+}
+
+function buildFinalSummary(){
+  $('finalSummary').classList.remove('hidden');
+  $('summaryIntro').textContent=`You completed four rounds covering ${fmtYear(-500)} to ${fmtYear(year)}. Your civilization began with ${fmtPop(snapshots[0]?.round?historyLog[0].before.population:2400000)} people and ended with ${fmtPop(civ.population)} people.`;
+
+  $('summaryTable').innerHTML=historyLog.map(h=>{
+    const got=h.correct.length?h.correct.join('; '):'None of the two selected predictions';
+    const off=h.incorrect.length?h.incorrect.join('; '):'Both selected predictions were strong';
+    const hyp=(h.hypothesis.join(' + '))+(h.hypothesisText?` — “${escapeHtml(h.hypothesisText)}”`:'');
+    return `<tr>
+      <td>${h.round}</td><td><strong>${h.problem}</strong><br><span class="small">${h.theme}</span></td>
+      <td><strong>${h.choice}</strong><br>${h.choiceDesc}</td>
+      <td>${hyp}</td><td>${got}</td><td>${off}</td>
+      <td>${h.worked.join(' ')}</td><td>${h.didnt.join(' ')}</td>
+    </tr>`;
+  }).join('');
+
+  const states=snapshots.length ? snapshots : [{round:0,year:-500,state:historyLog[0]?.before||freshCiv()}];
+  const metrics=[
+    ['Population',s=>fmtPop(s.population),'Population responds to food, disease, stability, labor supply, and extraction.'],
+    ['Food Security',s=>level(s.food),'Food affects population growth, urbanization, support, and vulnerability to crisis.'],
+    ['Population Density',s=>level(s.density),'Density supports markets and specialization but raises infrastructure and disease pressures.'],
+    ['Trade / Connection',s=>level(s.trade),'Connection spreads goods, wealth, ideas, people, armies, and disease.'],
+    ['Government Capacity',s=>level(s.admin),'Capacity determines whether rulers can turn decisions into action.'],
+    ['Regional Power',s=>level(s.regional),'Regional power can make administration effective while also threatening central control.'],
+    ['Inequality',s=>level(s.inequality),'Inequality shapes class interests, legitimacy, and political conflict.'],
+    ['Stability',s=>level(s.stability),'Stability reflects whether the system can absorb shocks without major breakdown.']
+  ];
+  $('dataTable').innerHTML=metrics.map(m=>{
+    const vals=states.map(x=>m[1](x.state));
+    while(vals.length<5)vals.push('—');
+    return `<tr><td><strong>${m[0]}</strong></td><td>${vals[0]}</td><td>${vals[1]}</td><td>${vals[2]}</td><td>${vals[3]}</td><td>${vals[4]}</td><td>${m[2]}</td></tr>`;
+  }).join('');
+
+  const connections=[];
+  for(let i=1;i<historyLog.length;i++){
+    const prev=historyLog[i-1],cur=historyLog[i];
+    connections.push(`<div class="connection"><strong>Round ${prev.round} → Round ${cur.round}:</strong> ${prev.choice} changed the system. By the next round, <strong>${cur.problem}</strong> had become important. This shows how a solution can move pressure from one part of society to another.</div>`);
+  }
+  $('connectionSummary').innerHTML=connections.join('')||'<p>No cross-round connections recorded.</p>';
+
+  const seen=[];
+  historyLog.forEach(h=>{if(!seen.some(x=>x.title===h.history.title))seen.push(h.history);});
+  $('comparisonCivs').innerHTML=seen.map(h=>`<div class="card"><strong>${h.title}</strong><p class="small">${h.body}</p><p><strong>Connection:</strong> ${h.same}</p><p><strong>Difference:</strong> ${h.diff}</p></div>`).join('');
+
+  const pop0=historyLog[0].before.population,popf=civ.population;
+  const popChange=(popf-pop0)/pop0;
+  let conclusion=`Your civilization changed because decisions interacted with existing conditions rather than operating alone. `;
+  conclusion+=popChange>0.05?`Population grew substantially, increasing the importance of food, density, infrastructure, and administration. `:
+              popChange<-0.05?`Population fell substantially, changing labor supply, taxation, settlement, and political relationships. `:
+              `Population changed only modestly, so political and institutional changes mattered more than demographic growth. `;
+  conclusion+=`Across the four rounds, the strongest pattern was that solving one problem usually strengthened one group or institution while creating a new dependency, pressure, or conflict elsewhere.`;
+  $('finalConclusion').textContent=conclusion;
+  $('finalSummary').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function exportSummary(){
+  let text='CIVILIZATION MODELING LAB — FINAL REPORT\n\n';
+  historyLog.forEach(h=>{
+    text+=`ROUND ${h.round}: ${h.problem}\n`;
+    text+=`Decision: ${h.choice}\n`;
+    text+=`Hypothesis: ${h.hypothesis.join(' + ')}\n`;
+    if(h.hypothesisText)text+=`Student reasoning: ${h.hypothesisText}\n`;
+    text+=`Correct predictions: ${h.correct.join('; ')||'None'}\n`;
+    text+=`Predictions that were not strongest effects: ${h.incorrect.join('; ')||'None'}\n`;
+    text+=`What worked: ${h.worked.join(' ')}\n`;
+    text+=`What did not / new problem: ${h.didnt.join(' ')}\n`;
+    text+=`Pattern: ${h.pattern}\n`;
+    text+=`Historical comparison: ${h.history.title}\n\n`;
+  });
+  text+='FINAL CIVILIZATION\n';
+  text+=`Population: ${fmtPop(civ.population)}\nFood security: ${level(civ.food)}\nPopulation density: ${level(civ.density)}\nTrade / connection: ${level(civ.trade)}\nGovernment capacity: ${level(civ.admin)}\nRegional power: ${level(civ.regional)}\nInequality: ${level(civ.inequality)}\nStability: ${level(civ.stability)}\n`;
+  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='civilization-modeling-summary.txt';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function escapeHtml(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML;}
+
+$('runBtn').addEventListener('click',run);
+$('nextBtn').addEventListener('click',()=>{
+  if($('nextBtn').disabled)return;
+  currentScenarioId=$('nextBtn').dataset.next;round++;renderScenario();window.scrollTo({top:0,behavior:'smooth'});
+});
+$('restartBtn').addEventListener('click',()=>{
+  round=1;year=-500;civ=freshCiv();historyLog=[];snapshots=[];$('finalSummary').classList.add('hidden');
+  currentScenarioId=randomOpening();renderScenario();window.scrollTo({top:0,behavior:'smooth'});
+});
+$('printBtn').addEventListener('click',()=>window.print());
+$('exportBtn').addEventListener('click',exportSummary);
+
+civ=freshCiv();
+snapshots=[{round:0,year:-500,state:{...civ}}];
+currentScenarioId=randomOpening();
+renderScenario();
+})();
+</script>
+</body>
+</html>
